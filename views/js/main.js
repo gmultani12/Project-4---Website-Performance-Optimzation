@@ -448,6 +448,11 @@ var resizePizzas = function(size) {
     return dx;
   }
 
+    var pizzaContainers = document.querySelectorAll(".randomPizzaContainer");
+    var pizzaContainersLength = pizzaContainers.length;
+    var dx = determineDx(pizzaContainers[0], size);
+    var newwidth = (pizzaContainers[0].offsetWidth + dx) + 'px';
+
   // Iterates through pizza elements on the page and changes their widths
   function changePizzaSizes(size) {
     for (var i = 0; i < document.querySelectorAll(".randomPizzaContainer").length; i++) {
@@ -497,16 +502,38 @@ function logAverageFrame(times) {   // times is the array of User Timing measure
 // The following code for sliding background pizzas was pulled from Ilya's demo found at:
 // https://www.igvita.com/slides/2012/devtools-tips-and-tricks/jank-demo.html
 
-// Moves the sliding background pizzas based on scroll position
+//Optimizations performed
+  var latestKnownScrollY = 0;
+  var ticking = true;
+// Scroll callback
+  function onScroll() {
+  latestKnownScrollY = window.scrollY;
+  requestTick();
+  }
+// When scroll calls `requestAnimationFrame`,
+  function requestTick() {
+  if (!ticking) {
+  requestAnimationFrame(updatePositions);
+  }
+  ticking = true;
+  }
+
+// Positions of Pizza
 function updatePositions() {
+  //Optimize reset for scroll function
+  ticking = false;
   frame++;
   window.performance.mark("mark_start_frame");
 
+  // Using currentScrollY and going back to the original position
   var items = document.querySelectorAll('.mover');
-  for (var i = 0; i < items.length; i++) {
-    var phase = Math.sin((document.body.scrollTop / 1250) + (i % 5));
+  var currentScrollY = latestKnownScrollY / 1250;
+  var phase;
+    for (var i = 0; i < items.length; i++) {
+    // CurrentScrollY variable
+    phase = Math.sin(currentScrollY + (i % 5));
     items[i].style.left = items[i].basicLeft + 100 * phase + 'px';
-  }
+    }
 
   // User Timing API to the rescue again. Seriously, it's worth learning.
   // Super easy to create custom metrics.
@@ -519,7 +546,7 @@ function updatePositions() {
 }
 
 // runs updatePositions on scroll
-window.addEventListener('scroll', updatePositions);
+window.addEventListener('scroll', onScroll);
 
 // Generates the sliding pizzas when the page loads.
 document.addEventListener('DOMContentLoaded', function() {
